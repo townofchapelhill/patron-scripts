@@ -72,7 +72,7 @@ except:
     
 # open a json file & write a header
 log_file.write("Creating patrons.json file.\n\n")
-patrons = open('//CHFS/Shared Documents/OpenData/datasets/staging/department/patrons.json', 'w')
+patrons = open('//CHFS/Shared Documents/OpenData/datasets/staging/patrons.json', 'w')
 patrons.write('{ "entries": [ \n')
 
 # call update function
