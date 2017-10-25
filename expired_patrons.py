@@ -97,9 +97,9 @@ except:
     
 # open csv file for writing
 log_file.write('Creating expired_patrons.csv file.\n')
-expired_patrons = open('//CHFS/Shared Documents/OpenData/datasets/staging/department/expired_patrons.csv', 'w')
+expired_patrons = open('//CHFS/Shared Documents/OpenData/datasets/staging/expired_patrons.csv', 'w')
 log_file.write('Creating patron_data.csv file.\n\n')
-patron_data = open('//CHFS/Shared Documents/OpenData/datasets/staging/department/patron_data.csv', 'w')
+patron_data = open('//CHFS/Shared Documents/OpenData/datasets/staging/patron_data.csv', 'w')
 
 # create a csvwriter object
 exp_csvwriter = csv.writer(expired_patrons)
