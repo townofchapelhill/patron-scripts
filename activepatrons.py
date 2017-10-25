@@ -10,7 +10,7 @@ import secrets
 # Function to create the save file vars
 def create_save_files():
     # Link to CHFS directory
-    unpublished_file = '//CHFS/Shared Documents/OpenData/datasets/staging/library/activepatrons.json'
+    unpublished_file = '//CHFS/Shared Documents/OpenData/datasets/staging/activepatrons.json'
     # Open file to write
     patrons = open(unpublished_file, 'w')
     return patrons
