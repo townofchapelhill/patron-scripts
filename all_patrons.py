@@ -30,7 +30,7 @@ def update_patrons():
         # print(i) # for testing purposes
         
         # set request variable equal to URI at i's index, showing fields: createdDate, names, barcodes, expirationDate and deleted is false
-        request = requests.get("https://catalog.chapelhillpubliclibrary.org/iii/sierra-api/v3/patrons?offset=" + str(i) + "&limit=2000&fields=createdDate,names,barcodes,expirationDate,emails,blockInfo&deleted=false", headers={
+        request = requests.get("https://catalog.chapelhillpubliclibrary.org/iii/sierra-api/v3/patrons?offset=" + str(i) + "&limit=2000&fields=createdDate,names,barcodes,expirationDate,emails&deleted=false", headers={
             "Authorization": "Bearer " + token
         })
         
@@ -65,13 +65,14 @@ today = datetime.date.today()
 # throw an error if a "/logs" directory doesn't exist
 try:
     log_file = open('logs/' + str(today) + '-all_patrons.txt', 'w')
+    log_file.write(str(datetime.datetime.now()))
 except:
     error_file = open('error.txt', 'w')
     error_file.write('ERROR - "logs" directory not found\n')
     error_file.close()
     
 # open a json file & write a header
-log_file.write("Creating patrons.json file.\n\n")
+log_file.write("\nCreating patrons.json file.\n\n")
 patrons = open('//CHFS/Shared Documents/OpenData/datasets/staging/patrons.json', 'w')
 patrons.write('{ "entries": [ \n')
 
