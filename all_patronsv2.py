@@ -52,7 +52,8 @@ def update_patrons(writer):
                 row.append(entry["emails"][0])
                 writer.writerow(row)
             except KeyError:
-                continue
+                row.append("")
+                writer.writerow(row)
         
         # increment i by 2000 for the next 2000 records
         i_prev = i
