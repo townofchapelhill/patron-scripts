@@ -73,7 +73,7 @@ except:
     
 # open a csv file for writing
 log_file.write("\nCreating patrons.csv file.\n\n")
-patrons = open('patrons.csv', 'w')
+patrons = open('//CHFS/Shared Documents/OpenData/datasets/staging/patrons.csv', 'w')
 
 # create csvwriter object
 patron_csvwriter = csv.writer(patrons)
