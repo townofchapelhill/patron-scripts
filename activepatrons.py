@@ -56,7 +56,7 @@ def fetch_data():
     # Loop goes through records up to i
     while loop == True:
         # Request the api data at url
-        request = requests.get("https://catalog.chapelhillpubliclibrary.org/iii/sierra-api/v4/patrons/?limit=2000&offset=" + str(i) + "&fields=updatedDate&updatedDate=" + str(date_range), headers=header_text)
+        request = requests.get("https://catalog.chapelhillpubliclibrary.org/iii/sierra-api/v4/patrons/?limit=2000&offset=" + str(i) + "&fields=addresses,updatedDate&updatedDate=" + str(date_range), headers=header_text)
         
         # Testing
         # print(i)
