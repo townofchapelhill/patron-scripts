@@ -5,6 +5,10 @@ import secrets
 import datetime
 import csv
 
+# function checks if a string is an ASCII (english characters only)
+def is_ascii(s):
+	return all(ord(c) < 128 for c in s)
+
 # function that gets the authentication token
 def get_token():
     url = "https://catalog.chapelhillpubliclibrary.org/iii/sierra-api/v3/token"
@@ -44,6 +48,11 @@ def update_patrons(writer):
         for entry in jfile["entries"]:
             try:
                 row = []
+                names = entry["names"][0]
+                if is_ascii(names) == False:
+                    for letter in names:
+                        if is_ascii(letter) == False:
+                            names = names.replace(letter, '?')
                 row.append(entry["id"])
                 row.append(entry["names"][0])
                 row.append(entry["createdDate"])
