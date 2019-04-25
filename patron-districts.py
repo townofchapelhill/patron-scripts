@@ -37,6 +37,9 @@ def get_all_patrons():
         except:
             parse_data(all_patrons)
             break
+        print("Number of Patrons retrieved: " + str(len(all_patrons)))
+        iterator += 2000
+        print(iterator)
 
 # Function to parse and transform retrieved data as necessary
 def parse_data(all_patrons):
