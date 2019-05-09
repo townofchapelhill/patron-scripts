@@ -11,7 +11,7 @@ from datetime import date
 
 # Object used to store data to aid in transformation
 class Patron(object):
-    def __init__(self, pType=None, strAddress=None, city=None, state=None, zip=None, expDate=None, bDate=None):
+    def __init__(self, pType=None, strAddress=None, city=None, state=None, zip=None, expDate=None, bDate=None, geoBound=None):
         self.pType = ''
         self.strAddress = ''
         self.city = ''
@@ -19,6 +19,7 @@ class Patron(object):
         self.zip = ''
         self.expDate = ''
         self.bDate = ''
+        self.geoBound = ''
 
 # GETs all patron records from Sierra
 def get_all_patrons():
@@ -91,7 +92,43 @@ def parse_data(all_patrons):
             patron["expDate"] = "Inactive"
     
     # call next function, pass "parsed_patrons"
+    check_geoBoundary(parsed_patrons)
+
+def check_geoBoundary(parsed_patrons):
+    count = 0
+    for patron in parsed_patrons:
+        full_address_string = patron['strAddress'] + '%2C+' + patron['city'] + '%2C+' + patron['state'] + '+' + patron['zip']
+        try:
+            get_request = requests.get('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/find?text=' + full_address_string + '&f=pjson')
+            data = json.loads(get_request.text)
+            xCoord = data['locations'][0]['feature']['geometry']['x']
+            yCoord = data['locations'][0]['feature']['geometry']['y']
+        except:
+            continue
+
+        city_limits_request = requests.get("https://gisweb.townofchapelhill.org/arcgis/rest/services/MapServices/tochBoundary/MapServer/0/query?geometry=" + str(xCoord) + "%2C" + str(yCoord) + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=102100&returnCountOnly=true&f=json")
+        try:
+            city_limits_data = json.loads(city_limits_request.text)
+        except:
+            pass
+        try: 
+            if city_limits_data['count'] == 1:
+                patron['geoBound'] = 'Within Chapel Hill'
+            else:
+                county_limits_request = requests.get("https://gisweb.townofchapelhill.org/arcgis/rest/services/MapServices/ToCH_OrangeCo_CombinedLimits/MapServer/0/query?geometry=" + str(xCoord) + "%2C" + str(yCoord) + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=102100&returnCountOnly=true&f=json")
+                county_limits_data = json.loads(county_limits_request.text)
+                if county_limits_data['count'] == 1:
+                    patron['geoBound'] = 'Within Orange County'
+                else:
+                    patron['geoBound'] = 'Outside Orange County'
+            print(patron['geoBound'])
+            count += 1
+            print(count)
+        except:
+            continue
+    
     write_csv(parsed_patrons)
+
 
 # writes the final csv
 def write_csv(parsed_patrons):
