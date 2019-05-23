@@ -11,7 +11,8 @@ from datetime import date
 
 # Object used to store data to aid in transformation
 class Patron(object):
-    def __init__(self, pType=None, strAddress=None, city=None, state=None, zip=None, expDate=None, bDate=None, geoBound=None):
+    def __init__(self, id=None, pType=None, strAddress=None, city=None, state=None, zip=None, expDate=None, bDate=None, geoBound=None):
+        self.id = ''
         self.pType = ''
         self.strAddress = ''
         self.city = ''
@@ -45,9 +46,12 @@ def get_all_patrons():
 # Function to parse and transform retrieved data as necessary
 def parse_data(all_patrons):
     parsed_patrons = []
+    counter = 1
     for entry in all_patrons:
         # create new instance of "Patron" object to hold info from each record
         new_patron = Patron()
+        new_patron.id = counter
+        counter += 1
         new_patron.pType = entry['patronType']
         # try/catch prevents script failure from records with missing data
         try:
@@ -74,9 +78,10 @@ def parse_data(all_patrons):
     # transforms expDate and bDate to requested values
     for patron in parsed_patrons:
         today = date.today()
+        days_in_year = 365.2425
         try:
-            bYear = patron['bDate'][0:4]
-            age = int(today.year) - int(bYear)
+            parsed_bDate = date(int(patron['bDate'][0:4]), int(patron['bDate'][5:7]), int(patron['bDate'][8:10]))
+            age = int((today - parsed_bDate).days / days_in_year)
             if age >= 18:
                 patron['bDate'] = "Adult"
             else:
@@ -84,17 +89,21 @@ def parse_data(all_patrons):
         except:
             continue
         
-        expYear = patron['expDate'][0:4]
-        active = int(expYear) - int(today.year)
-        if active <= 3:
-            patron["expDate"] = "Active"
-        else:
-            patron["expDate"] = "Inactive"
+        try:
+            parsed_expDate = date(int(patron['expDate'][0:4]), int(patron['expDate'][5:7]), int(patron['expDate'][8:10]))
+            active = float((parsed_expDate - today).days / days_in_year)
+            if active > 0.0 and active < 3.0:
+                patron["expDate"] = "Active"
+            else:
+                patron["expDate"] = "Inactive"
+        except:
+            continue
     
     # call next function, pass "parsed_patrons"
     check_geoBoundary(parsed_patrons)
 
 def check_geoBoundary(parsed_patrons):
+    logfile_addresses = open('logfile_addresses', 'w')
     count = 0
     for patron in parsed_patrons:
         full_address_string = patron['strAddress'] + '%2C+' + patron['city'] + '%2C+' + patron['state'] + '+' + patron['zip']
@@ -104,6 +113,8 @@ def check_geoBoundary(parsed_patrons):
             xCoord = data['locations'][0]['feature']['geometry']['x']
             yCoord = data['locations'][0]['feature']['geometry']['y']
         except:
+            logfile_addresses.write('Address rejected by GIS server with code:' + get_request.text + '\n')
+            logfile_addresses.write('Address was:' + patron['strAddress'] + '' + patron['city'] + '' + patron['zip'] + ',' + patron['state'] + '\n' + '\n')
             continue
 
         city_limits_request = requests.get("https://gisweb.townofchapelhill.org/arcgis/rest/services/MapServices/tochBoundary/MapServer/0/query?geometry=" + str(xCoord) + "%2C" + str(yCoord) + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=102100&returnCountOnly=true&f=json")
