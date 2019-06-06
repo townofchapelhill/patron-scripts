@@ -168,7 +168,7 @@ def write_csv(checked_addresses, skipped_addresses):
             csv_writer.writeheader()
         
         for entry in skipped_addresses:
-            csv_writer.writerow(entry)    
+            csv_writer.writerow(entry)
 
 # requests access token from Sierra each time it's called
 def get_token():
