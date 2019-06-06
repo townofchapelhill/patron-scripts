@@ -45,3 +45,4 @@ temp*.sh
 *secret*
 *credential*
 *.lock
+secrets.py

@@ -3,7 +3,6 @@ import requests
 import secrets
 import csv
 import json
-import jsonpickle
 import re
 import os
 from datetime import datetime
@@ -39,9 +38,6 @@ def get_all_patrons():
         except:
             parse_data(all_patrons)
             break
-        print("Number of Patrons retrieved: " + str(len(all_patrons)))
-        iterator += 2000
-        print(iterator)
 
 # Function to parse and transform retrieved data as necessary
 def parse_data(all_patrons):
@@ -51,7 +47,6 @@ def parse_data(all_patrons):
         # create new instance of "Patron" object to hold info from each record
         new_patron = Patron()
         new_patron.id = counter
-        counter += 1
         new_patron.pType = entry['patronType']
         # try/catch prevents script failure from records with missing data
         try:
@@ -72,6 +67,7 @@ def parse_data(all_patrons):
                 new_patron.zip = split_address[2]
         except:
             pass
+        counter += 1
         # store "Patron" as a dictionary
         parsed_patrons.append(new_patron.__dict__)
     
@@ -80,6 +76,7 @@ def parse_data(all_patrons):
         today = date.today()
         days_in_year = 365.2425
         try:
+            # determines bDate down to the day
             parsed_bDate = date(int(patron['bDate'][0:4]), int(patron['bDate'][5:7]), int(patron['bDate'][8:10]))
             age = int((today - parsed_bDate).days / days_in_year)
             if age >= 18:
@@ -90,6 +87,7 @@ def parse_data(all_patrons):
             continue
         
         try:
+            # determines expDate down to the day
             parsed_expDate = date(int(patron['expDate'][0:4]), int(patron['expDate'][5:7]), int(patron['expDate'][8:10]))
             active = float((parsed_expDate - today).days / days_in_year)
             if active > 0.0 and active < 3.0:
@@ -102,21 +100,27 @@ def parse_data(all_patrons):
     # call next function, pass "parsed_patrons"
     check_geoBoundary(parsed_patrons)
 
+# checks for whether or not a patron lives within Chapel Hill, within Orange County, or outside of county
+# Additionally, dumps rejected addresses into a CSV to assist Library staff
 def check_geoBoundary(parsed_patrons):
-    logfile_addresses = open('logfile_addresses', 'w')
-    count = 0
+    checked_addresses = []
+    skipped_addresses = []
     for patron in parsed_patrons:
+        # format address to play nice with GIS
         full_address_string = patron['strAddress'] + '%2C+' + patron['city'] + '%2C+' + patron['state'] + '+' + patron['zip']
         try:
+            # returns geo coordinates
             get_request = requests.get('https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/find?text=' + full_address_string + '&f=pjson')
             data = json.loads(get_request.text)
             xCoord = data['locations'][0]['feature']['geometry']['x']
             yCoord = data['locations'][0]['feature']['geometry']['y']
+            if len(data['locations'][0]) == 0:
+                skipped_addresses.append(patron)
         except:
-            logfile_addresses.write('Address rejected by GIS server with code:' + get_request.text + '\n')
-            logfile_addresses.write('Address was:' + patron['strAddress'] + '' + patron['city'] + '' + patron['zip'] + ',' + patron['state'] + '\n' + '\n')
+            skipped_addresses.append(patron)
             continue
 
+        # Checks within Chapel Hill GeoBoundary
         city_limits_request = requests.get("https://gisweb.townofchapelhill.org/arcgis/rest/services/MapServices/tochBoundary/MapServer/0/query?geometry=" + str(xCoord) + "%2C" + str(yCoord) + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=102100&returnCountOnly=true&f=json")
         try:
             city_limits_data = json.loads(city_limits_request.text)
@@ -126,44 +130,52 @@ def check_geoBoundary(parsed_patrons):
             if city_limits_data['count'] == 1:
                 patron['geoBound'] = 'Within Chapel Hill'
             else:
+                # Checks within Orange County GeoBoundary
                 county_limits_request = requests.get("https://gisweb.townofchapelhill.org/arcgis/rest/services/MapServices/ToCH_OrangeCo_CombinedLimits/MapServer/0/query?geometry=" + str(xCoord) + "%2C" + str(yCoord) + "&geometryType=esriGeometryPoint&inSR=4326&spatialRel=esriSpatialRelWithin&returnGeometry=false&outSR=102100&returnCountOnly=true&f=json")
                 county_limits_data = json.loads(county_limits_request.text)
                 if county_limits_data['count'] == 1:
                     patron['geoBound'] = 'Within Orange County'
                 else:
                     patron['geoBound'] = 'Outside Orange County'
-            print(patron['geoBound'])
-            count += 1
-            print(count)
+            checked_addresses.append(patron)
         except:
+            skipped_addresses.append(patron)
             continue
     
-    write_csv(parsed_patrons)
+    # call CSV writer function
+    write_csv(checked_addresses, skipped_addresses)
 
 
 # writes the final csv
-def write_csv(parsed_patrons):
-    with open("all_patrons_new.csv", "w+") as update_patrons:
-        fieldnames = parsed_patrons[0].keys()
+def write_csv(checked_addresses, skipped_addresses):
+    # writes CSV that's pushed to portal
+    with open("//CHFS/Shared Documents/OpenData/datasets/staging/all_patrons_new.csv", "w+") as update_patrons:
+        fieldnames = checked_addresses[0].keys()
         csv_writer = csv.DictWriter(update_patrons, fieldnames=fieldnames, extrasaction='ignore', delimiter=',')
         
-        if os.stat('all_patrons_new.csv').st_size == 0:
+        if os.stat('//CHFS/Shared Documents/OpenData/datasets/staging/all_patrons_new.csv').st_size == 0:
             csv_writer.writeheader()
         
-        for entry in parsed_patrons:
-            if entry['state'] != 'NC':
-                continue
-            elif entry['zip'] == '':
-                continue
-            else:
-                csv_writer.writerow(entry)
+        for entry in checked_addresses:
+            csv_writer.writerow(entry)
+
+    # Writes CSV of rejected addresses
+    with open("//CHFS/Shared Documents/OpenData/datasets/staging/bad_patron_addresses.csv", "w+") as bad_patrons:
+        fieldnames_2 = skipped_addresses[0].keys()
+        csv_writer = csv.DictWriter(bad_patrons, fieldnames=fieldnames_2, extrasaction='ignore', delimiter=',')
+        
+        if os.stat('//CHFS/Shared Documents/OpenData/datasets/staging/bad_patron_addresses.csv').st_size == 0:
+            csv_writer.writeheader()
+        
+        for entry in skipped_addresses:
+            csv_writer.writerow(entry)
 
 # requests access token from Sierra each time it's called
 def get_token():
     url = "https://catalog.chapelhillpubliclibrary.org/iii/sierra-api/v5/token"
 
     # Get the API key from secrets file
-    header = {"Authorization": "Basic " + str(secrets.sierra_api_2), "Content-Type": "application/x-www-form-urlencoded"}
+    header = {"Authorization": "Basic " + str(secrets.sierra_api), "Content-Type": "application/x-www-form-urlencoded"}
     response = requests.post(url, headers=header)
     json_response = json.loads(response.text)
     # Create var to hold the response data
