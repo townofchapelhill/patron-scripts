@@ -8,6 +8,13 @@ A list of patron scripts for the Chapel Hill Open Data portal retrieved via the 
 ### Branch for calculating specific values for Orange County data evaluation
 #### First pass on address normalization for GIS
 
+## Statistical Categories
+### break the residency-registered users analysis into these categories
+1.            Outside of Orange County
+2.            Within TOCH corporate limits
+3.            Within Town of Hillsborough corporate limits
+4.            Within Carrboro corporate limits
+5.            Within unincorporated Orange County limits
 
 <pre>
  _____ _                      _   _   _ _ _ _ 
